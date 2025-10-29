@@ -104,8 +104,13 @@ const Navbar = () => {
                      {/* User Menu - Hidden on mobile */}
            <div className="hidden md:flex items-center">
              <div className="flex items-center space-x-2 text-white">
-               <UserIcon className="h-5 w-5" />
-               <span className="text-sm font-medium">{user.name}</span>
+               <Link
+                 to="/profile"
+                 className="flex items-center space-x-2 hover:bg-green-700 px-3 py-2 rounded-md text-sm font-medium"
+               >
+                 <UserIcon className="h-5 w-5" />
+                 <span>{user.name}</span>
+               </Link>
                <button
                  onClick={handleLogout}
                  className="text-white hover:bg-green-700 px-3 py-2 rounded-md text-sm font-medium flex items-center"
@@ -176,10 +181,14 @@ const Navbar = () => {
            
            {/* Mobile User Menu */}
            <div className="border-t border-green-500 pt-4 mt-4">
-             <div className="flex items-center px-3 py-2 text-white">
+             <Link
+               to="/profile"
+               onClick={closeMobileMenu}
+               className="flex items-center px-3 py-2 text-white hover:bg-green-600 rounded-md text-base font-medium"
+             >
                <UserIcon className="h-5 w-5 mr-2" />
-               <span className="text-sm font-medium">{user.name}</span>
-             </div>
+               <span>{user.name}</span>
+             </Link>
              <button
                onClick={handleLogout}
                className="text-white hover:bg-green-600 block w-full text-left px-3 py-2 rounded-md text-base font-medium"

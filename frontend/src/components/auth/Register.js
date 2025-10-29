@@ -5,14 +5,10 @@ import { EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline';
 
 const Register = () => {
   const [formData, setFormData] = useState({
-    name: '',
+    username: '',
     email: '',
     password: '',
-    confirmPassword: '',
-    educationalInstitution: '',
-    class: '',
-    address: '',
-    phoneNumber: ''
+    confirmPassword: ''
   });
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -47,13 +43,9 @@ const Register = () => {
     setLoading(true);
 
     const userData = {
-      name: formData.name,
+      name: formData.username,
       email: formData.email,
-      password: formData.password,
-      educationalInstitution: formData.educationalInstitution,
-      class: formData.class,
-      address: formData.address,
-      phoneNumber: formData.phoneNumber
+      password: formData.password
     };
 
     try {
@@ -114,18 +106,19 @@ const Register = () => {
           
           <div className="space-y-4">
             <div>
-              <label htmlFor="name" className="block text-sm font-medium text-gray-700">
-                Full Name
+              <label htmlFor="username" className="block text-sm font-medium text-gray-700">
+                Username
               </label>
               <input
-                id="name"
-                name="name"
+                id="username"
+                name="username"
                 type="text"
+                autoComplete="username"
                 required
-                value={formData.name}
+                value={formData.username}
                 onChange={handleChange}
                 className="mt-1 appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-green-500 focus:border-green-500 focus:z-10 sm:text-sm"
-                placeholder="Enter your full name"
+                placeholder="Enter your username"
               />
             </div>
 
@@ -143,70 +136,6 @@ const Register = () => {
                 onChange={handleChange}
                 className="mt-1 appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-green-500 focus:border-green-500 focus:z-10 sm:text-sm"
                 placeholder="Enter your email"
-              />
-            </div>
-
-            <div>
-              <label htmlFor="educationalInstitution" className="block text-sm font-medium text-gray-700">
-                Educational Institution
-              </label>
-              <input
-                id="educationalInstitution"
-                name="educationalInstitution"
-                type="text"
-                required
-                value={formData.educationalInstitution}
-                onChange={handleChange}
-                className="mt-1 appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-green-500 focus:border-green-500 focus:z-10 sm:text-sm"
-                placeholder="Enter your institution"
-              />
-            </div>
-
-            <div>
-              <label htmlFor="class" className="block text-sm font-medium text-gray-700">
-                Class
-              </label>
-              <input
-                id="class"
-                name="class"
-                type="text"
-                required
-                value={formData.class}
-                onChange={handleChange}
-                className="mt-1 appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-green-500 focus:border-green-500 focus:z-10 sm:text-sm"
-                placeholder="Enter your class"
-              />
-            </div>
-
-            <div>
-              <label htmlFor="address" className="block text-sm font-medium text-gray-700">
-                Address
-              </label>
-              <textarea
-                id="address"
-                name="address"
-                required
-                value={formData.address}
-                onChange={handleChange}
-                rows={3}
-                className="mt-1 appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-green-500 focus:border-green-500 focus:z-10 sm:text-sm"
-                placeholder="Enter your address"
-              />
-            </div>
-
-            <div>
-              <label htmlFor="phoneNumber" className="block text-sm font-medium text-gray-700">
-                Phone Number
-              </label>
-              <input
-                id="phoneNumber"
-                name="phoneNumber"
-                type="tel"
-                required
-                value={formData.phoneNumber}
-                onChange={handleChange}
-                className="mt-1 appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-green-500 focus:border-green-500 focus:z-10 sm:text-sm"
-                placeholder="Enter your phone number"
               />
             </div>
             

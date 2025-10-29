@@ -8,6 +8,7 @@ import DailyReport from './components/DailyReport';
 import MonthlyReport from './components/MonthlyReport';
 import QASection from './components/QASection';
 import PDFDownload from './components/PDFDownload';
+import Profile from './components/Profile';
 import Navbar from './components/Navbar';
 
 // Protected Route Component
@@ -59,6 +60,11 @@ function App() {
               <Route path="/download" element={
                 <ProtectedRoute>
                   <PDFDownload />
+                </ProtectedRoute>
+              } />
+              <Route path="/profile" element={
+                <ProtectedRoute>
+                  <Profile />
                 </ProtectedRoute>
               } />
             </Routes>

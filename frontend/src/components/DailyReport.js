@@ -2,13 +2,122 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { CheckIcon, XMarkIcon, CalendarIcon } from '@heroicons/react/24/outline';
 import Toast from './Toast';
+import { useAuth } from '../contexts/AuthContext';
 
 const DailyReport = () => {
+  const { user } = useAuth();
   const [currentReport, setCurrentReport] = useState(null);
   const [selectedDate, setSelectedDate] = useState(new Date().getDate());
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState(null);
+
+  const getCategoryBadgeClasses = (category) => {
+    switch ((category || '').toLowerCase()) {
+      case 'hami':
+        return 'bg-green-100 text-green-800 border-green-300';
+      case 'rafeeqa':
+        return 'bg-purple-100 text-purple-800 border-purple-300';
+      case 'umeedwar rukn':
+        return 'bg-yellow-100 text-yellow-800 border-yellow-300';
+      case 'rukn':
+        return 'bg-blue-100 text-blue-800 border-blue-300';
+      default:
+        return 'bg-gray-100 text-gray-800 border-gray-300';
+    }
+  };
+
+  // Get fields configuration based on user category
+  const getFieldsForCategory = (category) => {
+    const baseFields = {
+      yesNoFields: [
+        { field: 'hifz', label: 'Hifz' },
+        { field: 'nazra', label: 'Nazra' },
+        { field: 'tafseer', label: 'Tafseer' },
+        { field: 'hadees', label: 'Hadees' },
+        { field: 'literature', label: 'Literature' },
+        { field: 'ghrKaKaam', label: 'Ghar ka Kaam' }
+      ],
+      numericFields: [
+        { field: 'karkunaanMulakaat', label: 'Karkunaan Mulakaat', placeholder: 'Number of meetings' }
+      ]
+    };
+
+    switch ((category || '').toLowerCase()) {
+      case 'hami':
+        return {
+          yesNoFields: [
+            ...baseFields.yesNoFields,
+            { field: 'ajKisiKoKoiAchiBaatBtai', label: 'Aj Kisi Ko Koi Achi Baat Btai?' },
+            { field: 'quranCircle', label: 'Quran Circle' },
+            { field: 'ajApnaMuhasibaKiya', label: 'Aj Apna Muhasiba Kiya?' }
+          ],
+          numericFields: [
+            { field: 'taqseemDawatiMasnuaat', label: 'Taqseem Dawati Masnuaat', placeholder: 'Number of items distributed' }
+          ]
+        };
+      case 'rafeeqa':
+        return {
+          yesNoFields: [
+            ...baseFields.yesNoFields,
+            { field: 'darsiKutab', label: 'Darsi Kutab' }
+          ],
+          numericFields: [
+            ...baseFields.numericFields,
+            { field: 'amoomiAfraadMulakaat', label: 'Amoomi Afraad Mulakaat', placeholder: 'Number of general meetings' },
+            { field: 'khatootTadaad', label: 'Khatoot Tadaad', placeholder: 'Number of letters' }
+          ]
+        };
+      case 'umeedwar rukn':
+        // For now, same as rafeeqa - will be updated when you provide the fields
+        return {
+          yesNoFields: [
+            ...baseFields.yesNoFields,
+            { field: 'darsiKutab', label: 'Darsi Kutab' }
+          ],
+          numericFields: [
+            ...baseFields.numericFields,
+            { field: 'amoomiAfraadMulakaat', label: 'Amoomi Afraad Mulakaat', placeholder: 'Number of general meetings' },
+            { field: 'khatootTadaad', label: 'Khatoot Tadaad', placeholder: 'Number of letters' }
+          ]
+        };
+      case 'rukn':
+        // For now, same as rafeeqa - will be updated when you provide the fields
+        return {
+          yesNoFields: [
+            ...baseFields.yesNoFields,
+            { field: 'darsiKutab', label: 'Darsi Kutab' }
+          ],
+          numericFields: [
+            ...baseFields.numericFields,
+            { field: 'amoomiAfraadMulakaat', label: 'Amoomi Afraad Mulakaat', placeholder: 'Number of general meetings' },
+            { field: 'khatootTadaad', label: 'Khatoot Tadaad', placeholder: 'Number of letters' }
+          ]
+        };
+      default:
+        // Default to rafeeqa fields
+        return {
+          yesNoFields: [
+            ...baseFields.yesNoFields,
+            { field: 'darsiKutab', label: 'Darsi Kutab' }
+          ],
+          numericFields: [
+            ...baseFields.numericFields,
+            { field: 'amoomiAfraadMulakaat', label: 'Amoomi Afraad Mulakaat', placeholder: 'Number of general meetings' },
+            { field: 'khatootTadaad', label: 'Khatoot Tadaad', placeholder: 'Number of letters' }
+          ]
+        };
+    }
+  };
+
+  const formatCategory = (category) => {
+    if (!category || typeof category !== 'string') return '';
+    return category
+      .split(' ')
+      .filter(Boolean)
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(' ');
+  };
 
   // Helper function to show toast
   const showToast = (message, type = 'success') => {
@@ -34,20 +143,23 @@ const DailyReport = () => {
       errors.push('Namaz must be either "yes" or "no"');
     }
 
-    // Validate yes/no fields
-    const yesNoFields = ['hifz', 'nazra', 'tafseer', 'hadees', 'literature', 'darsiKutab', 'ghrKaKaam'];
-    yesNoFields.forEach(field => {
-      if (!dayData[field] || !['yes', 'no'].includes(dayData[field])) {
+    // Get fields for current user category
+    const categoryFields = getFieldsForCategory(user?.category);
+    
+    // Validate yes/no fields based on category
+    categoryFields.yesNoFields.forEach(({ field }) => {
+      if (dayData[field] && !['yes', 'no'].includes(dayData[field])) {
         errors.push(`${field.charAt(0).toUpperCase() + field.slice(1)} must be either "yes" or "no"`);
       }
     });
 
-    // Validate numeric fields
-    const numericFields = ['karkunaanMulakaat', 'amoomiAfraadMulakaat', 'khatootTadaad'];
-    numericFields.forEach(field => {
-      const value = parseInt(dayData[field]);
-      if (isNaN(value) || value < 0) {
-        errors.push(`${field.charAt(0).toUpperCase() + field.slice(1)} must be a positive number`);
+    // Validate numeric fields based on category
+    categoryFields.numericFields.forEach(({ field }) => {
+      if (dayData[field] !== undefined && dayData[field] !== null && dayData[field] !== '') {
+        const value = parseInt(dayData[field]);
+        if (isNaN(value) || value < 0) {
+          errors.push(`${field.charAt(0).toUpperCase() + field.slice(1)} must be a positive number`);
+        }
       }
     });
 
@@ -157,23 +269,28 @@ const DailyReport = () => {
       const currentMonth = currentDate.toLocaleString('en-US', { month: 'long' });
       const currentYear = currentDate.getFullYear().toString();
 
-      // Extract data from the selected day
+      // Get fields for current user category
+      const categoryFields = getFieldsForCategory(user?.category);
+      
+      // Extract data from the selected day based on category
       const dayData = {
         date: selectedDate,
         month: currentMonth,
         year: currentYear,
-        namaz: selectedDayData.namaz,
-        hifz: selectedDayData.hifz,
-        nazra: selectedDayData.nazra,
-        tafseer: selectedDayData.tafseer,
-        hadees: selectedDayData.hadees,
-        literature: selectedDayData.literature,
-        darsiKutab: selectedDayData.darsiKutab,
-        karkunaanMulakaat: selectedDayData.karkunaanMulakaat,
-        amoomiAfraadMulakaat: selectedDayData.amoomiAfraadMulakaat,
-        khatootTadaad: selectedDayData.khatootTadaad,
-        ghrKaKaam: selectedDayData.ghrKaKaam
+        namaz: selectedDayData.namaz || (user?.category?.toLowerCase() === 'hami' ? 'no' : selectedDayData.namaz),
+        ghrKaKaam: selectedDayData.ghrKaKaam || (user?.category?.toLowerCase() === 'hami' ? 'no' : selectedDayData.ghrKaKaam)
       };
+
+      // Add category-specific fields
+      categoryFields.yesNoFields.forEach(({ field }) => {
+        // For hami category, default to 'no' if field is undefined
+        dayData[field] = selectedDayData[field] || (user?.category?.toLowerCase() === 'hami' ? 'no' : selectedDayData[field]);
+      });
+
+      categoryFields.numericFields.forEach(({ field }) => {
+        // For hami category, default to 0 if field is undefined
+        dayData[field] = selectedDayData[field] || (user?.category?.toLowerCase() === 'hami' ? 0 : selectedDayData[field]);
+      });
 
       // Validate the day data
       const validationErrors = validateDayData(dayData);
@@ -253,7 +370,17 @@ const DailyReport = () => {
       <div className="bg-white rounded-lg shadow-md p-6 mb-6">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">Daily Report</h1>
+            <h1 className="text-3xl font-bold text-gray-900 flex items-center space-x-3">
+              <span>Daily Report</span>
+              {user?.category && (
+                <span
+                  className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-sm font-medium border ${getCategoryBadgeClasses(user.category)}`}
+                  title="User Category"
+                >
+                  {formatCategory(user.category)}
+                </span>
+              )}
+            </h1>
             <p className="text-gray-600 mt-2">{getCurrentMonthName()}</p>
           </div>
           <div className="flex items-center space-x-4">
@@ -297,7 +424,7 @@ const DailyReport = () => {
                 <button
                   onClick={() => handleFieldChange('namaz', 'yes')}
                   className={`flex items-center space-x-2 px-4 py-2 rounded-md border ${
-                    (selectedDayData.namaz || 'no') === 'yes'
+                    (selectedDayData.namaz || (user?.category?.toLowerCase() === 'hami' ? 'no' : 'no')) === 'yes'
                       ? 'bg-green-100 border-green-500 text-green-700'
                       : 'bg-gray-50 border-gray-300 text-gray-700 hover:bg-gray-100'
                   }`}
@@ -308,7 +435,7 @@ const DailyReport = () => {
                 <button
                   onClick={() => handleFieldChange('namaz', 'no')}
                   className={`flex items-center space-x-2 px-4 py-2 rounded-md border ${
-                    (selectedDayData.namaz || 'no') === 'no'
+                    (selectedDayData.namaz || (user?.category?.toLowerCase() === 'hami' ? 'no' : 'no')) === 'no'
                       ? 'bg-red-100 border-red-500 text-red-700'
                       : 'bg-gray-50 border-gray-300 text-gray-700 hover:bg-gray-100'
                   }`}
@@ -321,52 +448,45 @@ const DailyReport = () => {
 
             {/* Religious Activities */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {[
-                { field: 'hifz', label: 'Hifz' },
-                { field: 'nazra', label: 'Nazra' },
-                { field: 'tafseer', label: 'Tafseer' },
-                { field: 'hadees', label: 'Hadees' },
-                { field: 'literature', label: 'Literature' },
-                { field: 'darsiKutab', label: 'Darsi Kutab' },
-                { field: 'ghrKaKaam', label: 'Ghar ka Kaam' }
-              ].map(({ field, label }) => (
-                <div key={field} className="border-b border-gray-200 pb-4">
-                  <label className="text-lg font-medium text-gray-900 mb-3 block">{label}</label>
-                  <div className="flex space-x-4">
-                    <button
-                      onClick={() => handleFieldChange(field, 'yes')}
-                      className={`flex items-center space-x-2 px-4 py-2 rounded-md border ${
-                        selectedDayData[field] === 'yes'
-                          ? 'bg-green-100 border-green-500 text-green-700'
-                          : 'bg-gray-50 border-gray-300 text-gray-700 hover:bg-gray-100'
-                      }`}
-                    >
-                      <CheckIcon className="h-5 w-5" />
-                      <span>Yes</span>
-                    </button>
-                    <button
-                      onClick={() => handleFieldChange(field, 'no')}
-                      className={`flex items-center space-x-2 px-4 py-2 rounded-md border ${
-                        selectedDayData[field] === 'no'
-                          ? 'bg-red-100 border-red-500 text-red-700'
-                          : 'bg-gray-50 border-gray-300 text-gray-700 hover:bg-gray-100'
-                      }`}
-                    >
-                      <XMarkIcon className="h-5 w-5" />
-                      <span>No</span>
-                    </button>
+              {getFieldsForCategory(user?.category).yesNoFields.map(({ field, label }) => {
+                // For hami category, default to 'no' if field is undefined
+                const defaultValue = (user?.category?.toLowerCase() === 'hami' && selectedDayData[field] === undefined) ? 'no' : selectedDayData[field];
+                
+                return (
+                  <div key={field} className="border-b border-gray-200 pb-4">
+                    <label className="text-lg font-medium text-gray-900 mb-3 block">{label}</label>
+                    <div className="flex space-x-4">
+                      <button
+                        onClick={() => handleFieldChange(field, 'yes')}
+                        className={`flex items-center space-x-2 px-4 py-2 rounded-md border ${
+                          defaultValue === 'yes'
+                            ? 'bg-green-100 border-green-500 text-green-700'
+                            : 'bg-gray-50 border-gray-300 text-gray-700 hover:bg-gray-100'
+                        }`}
+                      >
+                        <CheckIcon className="h-5 w-5" />
+                        <span>Yes</span>
+                      </button>
+                      <button
+                        onClick={() => handleFieldChange(field, 'no')}
+                        className={`flex items-center space-x-2 px-4 py-2 rounded-md border ${
+                          defaultValue === 'no'
+                            ? 'bg-red-100 border-red-500 text-red-700'
+                            : 'bg-gray-50 border-gray-300 text-gray-700 hover:bg-gray-100'
+                        }`}
+                      >
+                        <XMarkIcon className="h-5 w-5" />
+                        <span>No</span>
+                      </button>
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
 
             {/* Numeric Fields */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {[
-                { field: 'karkunaanMulakaat', label: 'Karkunaan Mulakaat', placeholder: 'Number of meetings' },
-                { field: 'amoomiAfraadMulakaat', label: 'Amoomi Afraad Mulakaat', placeholder: 'Number of general meetings' },
-                { field: 'khatootTadaad', label: 'Khatoot Tadaad', placeholder: 'Number of letters' }
-              ].map(({ field, label, placeholder }) => (
+              {getFieldsForCategory(user?.category).numericFields.map(({ field, label, placeholder }) => (
                 <div key={field}>
                   <label className="block text-sm font-medium text-gray-700 mb-2">{label}</label>
                   <input
