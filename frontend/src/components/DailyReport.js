@@ -253,6 +253,128 @@ const DailyReport = () => {
     setCurrentReport({ ...currentReport, days: updatedDays });
   };
 
+  // Save function for Hami category
+  const saveHamiDay = async (selectedDayData, currentMonth, currentYear) => {
+    const dayData = {
+      date: selectedDate,
+      month: currentMonth,
+      year: currentYear,
+      namaz: selectedDayData.namaz || 'no',
+      hifz: selectedDayData.hifz || 'no',
+      nazra: selectedDayData.nazra || 'no',
+      tafseer: selectedDayData.tafseer || 'no',
+      hadees: selectedDayData.hadees || 'no',
+      literature: selectedDayData.literature || 'no',
+      ghrKaKaam: selectedDayData.ghrKaKaam || 'no',
+      karkunaanMulakaat: selectedDayData.karkunaanMulakaat || 0,
+      ajKisiKoKoiAchiBaatBtai: selectedDayData.ajKisiKoKoiAchiBaatBtai || 'no',
+      quranCircle: selectedDayData.quranCircle || 'no',
+      ajApnaMuhasibaKiya: selectedDayData.ajApnaMuhasibaKiya || 'no',
+      taqseemDawatiMasnuaat: selectedDayData.taqseemDawatiMasnuaat || 0
+    };
+
+    const validationErrors = validateDayData(dayData);
+    if (validationErrors.length > 0) {
+      showToast(`Validation errors: ${validationErrors.join(', ')}`, 'error');
+      return false;
+    }
+
+    console.log('Saving Hami daily report data:', dayData);
+    const response = await axios.post('/reports/add-day', dayData);
+    return response.data;
+  };
+
+  // Save function for Rafeeqa category
+  const saveRafeeqaDay = async (selectedDayData, currentMonth, currentYear) => {
+    const dayData = {
+      date: selectedDate,
+      month: currentMonth,
+      year: currentYear,
+      namaz: selectedDayData.namaz || 'no',
+      hifz: selectedDayData.hifz || 'no',
+      nazra: selectedDayData.nazra || 'no',
+      tafseer: selectedDayData.tafseer || 'no',
+      hadees: selectedDayData.hadees || 'no',
+      literature: selectedDayData.literature || 'no',
+      ghrKaKaam: selectedDayData.ghrKaKaam || 'no',
+      karkunaanMulakaat: selectedDayData.karkunaanMulakaat || 0,
+      darsiKutab: selectedDayData.darsiKutab || 'no',
+      amoomiAfraadMulakaat: selectedDayData.amoomiAfraadMulakaat || 0,
+      khatootTadaad: selectedDayData.khatootTadaad || 0
+    };
+
+    const validationErrors = validateDayData(dayData);
+    if (validationErrors.length > 0) {
+      showToast(`Validation errors: ${validationErrors.join(', ')}`, 'error');
+      return false;
+    }
+
+    console.log('Saving Rafeeqa daily report data:', dayData);
+    const response = await axios.post('/reports/add-day', dayData);
+    return response.data;
+  };
+
+  // Save function for Umeedwar Rukn category
+  const saveUmeedwarRuknDay = async (selectedDayData, currentMonth, currentYear) => {
+    const dayData = {
+      date: selectedDate,
+      month: currentMonth,
+      year: currentYear,
+      namaz: selectedDayData.namaz || 'no',
+      hifz: selectedDayData.hifz || 'no',
+      nazra: selectedDayData.nazra || 'no',
+      tafseer: selectedDayData.tafseer || 'no',
+      hadees: selectedDayData.hadees || 'no',
+      literature: selectedDayData.literature || 'no',
+      ghrKaKaam: selectedDayData.ghrKaKaam || 'no',
+      karkunaanMulakaat: selectedDayData.karkunaanMulakaat || 0,
+      darsiKutab: selectedDayData.darsiKutab || 'no',
+      amoomiAfraadMulakaat: selectedDayData.amoomiAfraadMulakaat || 0,
+      khatootTadaad: selectedDayData.khatootTadaad || 0
+    };
+
+    const validationErrors = validateDayData(dayData);
+    if (validationErrors.length > 0) {
+      showToast(`Validation errors: ${validationErrors.join(', ')}`, 'error');
+      return false;
+    }
+
+    console.log('Saving Umeedwar Rukn daily report data:', dayData);
+    const response = await axios.post('/reports/add-day', dayData);
+    return response.data;
+  };
+
+  // Save function for Rukn category
+  const saveRuknDay = async (selectedDayData, currentMonth, currentYear) => {
+    const dayData = {
+      date: selectedDate,
+      month: currentMonth,
+      year: currentYear,
+      namaz: selectedDayData.namaz || 'no',
+      hifz: selectedDayData.hifz || 'no',
+      nazra: selectedDayData.nazra || 'no',
+      tafseer: selectedDayData.tafseer || 'no',
+      hadees: selectedDayData.hadees || 'no',
+      literature: selectedDayData.literature || 'no',
+      ghrKaKaam: selectedDayData.ghrKaKaam || 'no',
+      karkunaanMulakaat: selectedDayData.karkunaanMulakaat || 0,
+      darsiKutab: selectedDayData.darsiKutab || 'no',
+      amoomiAfraadMulakaat: selectedDayData.amoomiAfraadMulakaat || 0,
+      khatootTadaad: selectedDayData.khatootTadaad || 0
+    };
+
+    const validationErrors = validateDayData(dayData);
+    if (validationErrors.length > 0) {
+      showToast(`Validation errors: ${validationErrors.join(', ')}`, 'error');
+      return false;
+    }
+
+    console.log('Saving Rukn daily report data:', dayData);
+    const response = await axios.post('/reports/add-day', dayData);
+    return response.data;
+  };
+
+  // Main save handler that calls the appropriate category-specific function
   const handleSave = async () => {
     setSaving(true);
     showToast('');
@@ -260,7 +382,8 @@ const DailyReport = () => {
     try {
       const selectedDayData = getSelectedDayData();
       if (!selectedDayData) {
-        showToast('No data to save');
+        showToast('No data to save', 'error');
+        setSaving(false);
         return;
       }
 
@@ -269,47 +392,43 @@ const DailyReport = () => {
       const currentMonth = currentDate.toLocaleString('en-US', { month: 'long' });
       const currentYear = currentDate.getFullYear().toString();
 
-      // Get fields for current user category
-      const categoryFields = getFieldsForCategory(user?.category);
-      
-      // Extract data from the selected day based on category
-      const dayData = {
-        date: selectedDate,
-        month: currentMonth,
-        year: currentYear,
-        namaz: selectedDayData.namaz || (user?.category?.toLowerCase() === 'hami' ? 'no' : selectedDayData.namaz),
-        ghrKaKaam: selectedDayData.ghrKaKaam || (user?.category?.toLowerCase() === 'hami' ? 'no' : selectedDayData.ghrKaKaam)
-      };
+      // Get user category
+      const userCategory = (user?.category || '').toLowerCase();
+      let result;
 
-      // Add category-specific fields
-      categoryFields.yesNoFields.forEach(({ field }) => {
-        // For hami category, default to 'no' if field is undefined
-        dayData[field] = selectedDayData[field] || (user?.category?.toLowerCase() === 'hami' ? 'no' : selectedDayData[field]);
-      });
+      // Call the appropriate category-specific save function
+      switch (userCategory) {
+        case 'hami':
+          result = await saveHamiDay(selectedDayData, currentMonth, currentYear);
+          break;
+        case 'rafeeqa':
+          result = await saveRafeeqaDay(selectedDayData, currentMonth, currentYear);
+          break;
+        case 'umeedwar rukn':
+          result = await saveUmeedwarRuknDay(selectedDayData, currentMonth, currentYear);
+          break;
+        case 'rukn':
+          result = await saveRuknDay(selectedDayData, currentMonth, currentYear);
+          break;
+        default:
+          // Default to hami if category is unknown
+          console.warn(`Unknown category: ${userCategory}, defaulting to hami`);
+          result = await saveHamiDay(selectedDayData, currentMonth, currentYear);
+          break;
+      }
 
-      categoryFields.numericFields.forEach(({ field }) => {
-        // For hami category, default to 0 if field is undefined
-        dayData[field] = selectedDayData[field] || (user?.category?.toLowerCase() === 'hami' ? 0 : selectedDayData[field]);
-      });
-
-      // Validate the day data
-      const validationErrors = validateDayData(dayData);
-      if (validationErrors.length > 0) {
-        showToast(`Validation errors: ${validationErrors.join(', ')}`, 'error');
+      if (result === false) {
+        // Validation errors already shown in the category-specific function
         setSaving(false);
         return;
       }
 
-      console.log('Saving daily report data:', dayData);
-      
-      const response = await axios.post('/reports/add-day', dayData);
-      
-      if (response.data.success) {
+      if (result && result.success) {
         // Update the local state with the response data
-        setCurrentReport(response.data.report);
+        setCurrentReport(result.report);
         
-        showToast(response.data.message);
-        console.log('Daily report saved successfully:', response.data);
+        showToast(result.message);
+        console.log('Daily report saved successfully:', result);
         
         // Clear message after 3 seconds
         setTimeout(() => hideToast(), 3000);

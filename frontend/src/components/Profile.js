@@ -28,15 +28,17 @@ const Profile = () => {
 
         if (response.ok) {
           const userData = await response.json();
-          console.log('Fetched user data for profile:', userData); // Debug log
+          console.log('Fetched user data for profile:', userData.category); // Debug log
+          
           setFormData({
             name: userData.name || '',
             mobileNumber: userData.mobileNumber || userData.phoneNumber || '',
             class: userData.class || '',
             institutionName: userData.institutionName || userData.educationalInstitution || '',
             address: userData.address || '',
-            category: userData.category || ''
+            category: userData.category || 'hami'
           });
+          console.log('Form data set:', formData.category); // Debug log
         }
       } catch (error) {
         console.error('Error fetching user profile:', error);
@@ -246,15 +248,15 @@ const Profile = () => {
               </label>
               <select
                 id="category"
-                name="category"
+                name="category" // var name
                 required
                 value={formData.category}
                 onChange={handleChange}
                 className="mt-1 appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-green-500 focus:border-green-500 focus:z-10 sm:text-sm"
               >
                 <option value="">Select a category</option>
-                <option value="hami">Hami</option>
-                <option value="rafeeqa">Rafeeqa</option>
+                <option value="hami" default>Hami</option>
+                <option value="rafiqa">rafeeqa</option>
                 <option value="umeedwar rukn">Umeedwar Rukn</option>
                 <option value="rukn">Rukn</option>
               </select>
