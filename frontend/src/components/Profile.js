@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 
 const Profile = () => {
-  const { user } = useAuth();
+  const { user, updateUser } = useAuth();
   const [formData, setFormData] = useState({
     name: '',
     mobileNumber: '',
@@ -117,9 +117,24 @@ const Profile = () => {
       });
 
       if (response.ok) {
-        await response.json();
+        const responseData = await response.json();
         setSuccess('Profile updated successfully!');
-        // Update user context if needed
+        
+        // Update user in AuthContext (which also updates localStorage)
+        if (responseData.user) {
+          updateUser(responseData.user);
+        } else {
+          // If backend doesn't return user, fetch it from profile endpoint
+          const profileResponse = await fetch(`${baseURL}/users/profile`, {
+            headers: {
+              'Authorization': `Bearer ${localStorage.getItem('token')}`
+            }
+          });
+          if (profileResponse.ok) {
+            const fullUserData = await profileResponse.json();
+            updateUser(fullUserData);
+          }
+        }
       } else {
         const errorData = await response.json();
         setError(errorData.message || 'Failed to update profile');
@@ -256,7 +271,7 @@ const Profile = () => {
               >
                 <option value="">Select a category</option>
                 <option value="hami" default>Hami</option>
-                <option value="rafiqa">rafeeqa</option>
+                <option value="rafeeqa">Rafeeqa</option>
                 <option value="umeedwar rukn">Umeedwar Rukn</option>
                 <option value="rukn">Rukn</option>
               </select>

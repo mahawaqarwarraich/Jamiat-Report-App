@@ -128,11 +128,19 @@ export const AuthProvider = ({ children }) => {
     console.log('Logout successful, session cleared');
   };
 
+  const updateUser = (userData) => {
+    // Update both localStorage and React state
+    localStorage.setItem('user', JSON.stringify(userData));
+    setUser(userData);
+    console.log('User data updated in both localStorage and state');
+  };
+
   const value = {
     user,
     login,
     register,
     logout,
+    updateUser,
     loading
   };
 
