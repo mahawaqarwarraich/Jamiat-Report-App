@@ -27,7 +27,11 @@ const HamiDailyReport = () => {
   const fetchCurrentReport = async () => {
     try {
       setLoading(true);
-      const response = await axios.get('/hami-reports/current');
+      const currentDate = new Date();
+      const month = currentDate.toLocaleString('en-US', { month: 'long' });
+      const year = currentDate.getFullYear().toString();
+      
+      const response = await axios.get(`/hami-reports/${month}/${year}`);
       setCurrentReport(response.data);
       setSelectedDate(new Date().getDate());
     } catch (error) {
