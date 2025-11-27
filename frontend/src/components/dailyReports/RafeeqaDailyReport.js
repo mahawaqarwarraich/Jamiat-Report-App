@@ -56,20 +56,110 @@ const RafeeqaDailyReport = () => {
     setToast(null);
   };
 
+  // Fetch day data when month, year, or date changes
   useEffect(() => {
-    fetchCurrentReport();
-  }, [selectedMonth, selectedYear]);
+    fetchDayData();
+  }, [selectedMonth, selectedYear, selectedDate]);
 
-  const fetchCurrentReport = async () => {
+  const createDefaultDaysArray = () => {
+    const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 
+                       'July', 'August', 'September', 'October', 'November', 'December'];
+    const monthIndex = monthNames.indexOf(selectedMonth);
+    const daysInMonth = new Date(parseInt(selectedYear), monthIndex + 1, 0).getDate();
+    
+    const days = [];
+    for (let i = 1; i <= daysInMonth; i++) {
+      days.push({
+        date: i,
+        month: selectedMonth,
+        year: selectedYear,
+        namaz: 'no',
+        hifz: 'no',
+        nazra: 'no',
+        tafseer: 'no',
+        hadees: 'no',
+        literature: 'no',
+        ghrKaKaam: 'no',
+        darsiKutab: 'no',
+        karkunaanMulakaat: 0,
+        amoomiAfraadMulakaat: 0,
+        khatootTadaad: 0
+      });
+    }
+    return days;
+  };
+
+  const fetchDayData = async () => {
     try {
       setLoading(true);
-      const response = await axios.get(`/rafeeqa-reports/${selectedMonth}/${selectedYear}`);
-      setCurrentReport(response.data);
-      setSelectedDate(new Date().getDate());
+      
+      const response = await axios.get(`/rafeeqa-reports/day/${selectedMonth}/${selectedYear}/${selectedDate}`);
+      
+      // Check if we need to recreate the report structure (month/year changed or doesn't exist)
+      const needsNewReport = !currentReport || 
+                            currentReport.month !== selectedMonth || 
+                            currentReport.year !== selectedYear;
+      
+      if (response.data && response.data.success && response.data.day) {
+        // Day data found - use it
+        const day = response.data.day;
+        
+        if (needsNewReport) {
+          // Create new report structure with all days for the month
+          const days = createDefaultDaysArray();
+          // Replace the selected day with the fetched day data
+          const dayIndex = days.findIndex(d => d.date === selectedDate);
+          if (dayIndex !== -1) {
+            days[dayIndex] = { ...days[dayIndex], ...day };
+          } else {
+            days.push(day);
+          }
+          
+          setCurrentReport({
+            month: selectedMonth,
+            year: selectedYear,
+            days: days
+          });
+        } else {
+          // Update existing report with the fetched day data
+          const updatedDays = currentReport.days.map(d => {
+            if (d.date === selectedDate) {
+              return { ...d, ...day };
+            }
+            return d;
+          });
+          
+          // If day doesn't exist in the array, add it
+          const dayExists = updatedDays.some(d => d.date === selectedDate);
+          if (!dayExists) {
+            updatedDays.push(day);
+          }
+          
+          setCurrentReport({ ...currentReport, days: updatedDays });
+        }
+      } else {
+        // No day data found, create default structure
+        if (needsNewReport) {
+          const days = createDefaultDaysArray();
+          setCurrentReport({
+            month: selectedMonth,
+            year: selectedYear,
+            days: days
+          });
+        }
+      }
     } catch (error) {
-      console.error('Error fetching current report:', error);
-      setCurrentReport(null);
-      showToast('Error loading report. Please refresh the page.', 'error');
+      console.error('Error fetching day data:', error);
+      // Create default structure on error
+      if (!currentReport || currentReport.month !== selectedMonth || currentReport.year !== selectedYear) {
+        const days = createDefaultDaysArray();
+        setCurrentReport({
+          month: selectedMonth,
+          year: selectedYear,
+          days: days
+        });
+      }
+      showToast('Error loading day data. Showing default form.', 'error');
     } finally {
       setLoading(false);
     }
