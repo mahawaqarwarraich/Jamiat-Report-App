@@ -11,6 +11,42 @@ const RafeeqaDailyReport = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState(null);
+  
+  // Get current month and year
+  const currentDate = new Date();
+  const currentMonth = currentDate.toLocaleString('en-US', { month: 'long' });
+  const currentYear = currentDate.getFullYear().toString();
+  const currentDay = currentDate.getDate();
+  
+  // Get previous month (same year, or previous year if current month is January)
+  const prevDate = new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1);
+  const prevMonth = prevDate.toLocaleString('en-US', { month: 'long' });
+  const prevYear = prevDate.getFullYear().toString();
+  
+  // Determine available months (previous first if day <= 30, then current)
+  const availableMonths = currentDay <= 30 
+    ? [
+        { 
+          month: prevMonth, 
+          year: prevYear, 
+          label: `${prevMonth} ${prevYear} (Available for first 30 days)`
+        },
+        { 
+          month: currentMonth, 
+          year: currentYear, 
+          label: `${currentMonth} ${currentYear}` 
+        }
+      ]
+    : [
+        { 
+          month: currentMonth, 
+          year: currentYear, 
+          label: `${currentMonth} ${currentYear}` 
+        }
+      ];
+  
+  const [selectedMonth, setSelectedMonth] = useState(currentMonth);
+  const [selectedYear, setSelectedYear] = useState(currentYear);
 
   const showToast = (message, type = 'success') => {
     setToast({ message, type });
@@ -22,12 +58,12 @@ const RafeeqaDailyReport = () => {
 
   useEffect(() => {
     fetchCurrentReport();
-  }, []);
+  }, [selectedMonth, selectedYear]);
 
   const fetchCurrentReport = async () => {
     try {
       setLoading(true);
-      const response = await axios.get('/rafeeqa-reports/current');
+      const response = await axios.get(`/rafeeqa-reports/${selectedMonth}/${selectedYear}`);
       setCurrentReport(response.data);
       setSelectedDate(new Date().getDate());
     } catch (error) {
@@ -100,14 +136,10 @@ const RafeeqaDailyReport = () => {
         return;
       }
 
-      const currentDate = new Date();
-      const currentMonth = currentDate.toLocaleString('en-US', { month: 'long' });
-      const currentYear = currentDate.getFullYear().toString();
-
       const dayData = {
         date: selectedDate,
-        month: currentMonth,
-        year: currentYear,
+        month: selectedMonth,
+        year: selectedYear,
         namaz: selectedDayData.namaz || 'no',
         hifz: selectedDayData.hifz || 'no',
         nazra: selectedDayData.nazra || 'no',
@@ -146,8 +178,16 @@ const RafeeqaDailyReport = () => {
   };
 
   const getCurrentMonthName = () => {
-    if (!currentReport) return '';
-    return `${currentReport.month} ${currentReport.year}`;
+    return `${selectedMonth} ${selectedYear}`;
+  };
+  
+  const handleMonthChange = (e) => {
+    const selectedValue = e.target.value;
+    const selected = availableMonths.find(m => m.label === selectedValue);
+    if (selected) {
+      setSelectedMonth(selected.month);
+      setSelectedYear(selected.year);
+    }
   };
 
   if (loading) {
@@ -185,7 +225,7 @@ const RafeeqaDailyReport = () => {
     <div className="max-w-4xl mx-auto">
       {/* Header */}
       <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between flex-wrap gap-4">
           <div>
             <h1 className="text-3xl font-bold text-gray-900 flex items-center space-x-3">
               <span>Daily Report</span>
@@ -193,7 +233,20 @@ const RafeeqaDailyReport = () => {
                 Rafeeqa
               </span>
             </h1>
-            <p className="text-gray-600 mt-2">{getCurrentMonthName()}</p>
+            <div className="mt-2 flex items-center space-x-3">
+              <span className="text-sm font-medium text-gray-700">Select Month:</span>
+              <select
+                value={availableMonths.find(m => m.month === selectedMonth && m.year === selectedYear)?.label || `${selectedMonth} ${selectedYear}`}
+                onChange={handleMonthChange}
+                className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-white"
+              >
+                {availableMonths.map((monthOption) => (
+                  <option key={monthOption.label} value={monthOption.label}>
+                    {monthOption.label}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
           <div className="flex items-center space-x-4">
             <div className="flex items-center space-x-2">

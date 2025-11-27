@@ -11,6 +11,42 @@ const HamiDailyReport = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState(null);
+  
+  // Get current month and year
+  const currentDate = new Date();
+  const currentMonth = currentDate.toLocaleString('en-US', { month: 'long' });
+  const currentYear = currentDate.getFullYear().toString();
+  const currentDay = currentDate.getDate();
+  
+  // Get previous month (same year, or previous year if current month is January)
+  const prevDate = new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1);
+  const prevMonth = prevDate.toLocaleString('en-US', { month: 'long' });
+  const prevYear = prevDate.getFullYear().toString();
+  
+  // Determine available months (previous first if day <= 30, then current)
+  const availableMonths = currentDay <= 30 
+    ? [
+        { 
+          month: prevMonth, 
+          year: prevYear, 
+          label: `${prevMonth} ${prevYear} (Available for first 30 days)`
+        },
+        { 
+          month: currentMonth, 
+          year: currentYear, 
+          label: `${currentMonth} ${currentYear}` 
+        }
+      ]
+    : [
+        { 
+          month: currentMonth, 
+          year: currentYear, 
+          label: `${currentMonth} ${currentYear}` 
+        }
+      ];
+  
+  const [selectedMonth, setSelectedMonth] = useState(currentMonth);
+  const [selectedYear, setSelectedYear] = useState(currentYear);
 
   const showToast = (message, type = 'success') => {
     setToast({ message, type });
@@ -20,24 +56,111 @@ const HamiDailyReport = () => {
     setToast(null);
   };
 
+  // Fetch day data when month, year, or date changes
   useEffect(() => {
-    fetchCurrentReport();
-  }, []);
+    fetchDayData();
+  }, [selectedMonth, selectedYear, selectedDate]);
 
-  const fetchCurrentReport = async () => {
+  const createDefaultDaysArray = () => {
+    const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 
+                       'July', 'August', 'September', 'October', 'November', 'December'];
+    const monthIndex = monthNames.indexOf(selectedMonth);
+    const daysInMonth = new Date(parseInt(selectedYear), monthIndex + 1, 0).getDate();
+    
+    const days = [];
+    for (let i = 1; i <= daysInMonth; i++) {
+      days.push({
+        date: i,
+        month: selectedMonth,
+        year: selectedYear,
+        namaz: 'no',
+        hifz: 'no',
+        nazra: 'no',
+        tafseer: 'no',
+        hadees: 'no',
+        literature: 'no',
+        ghrKaKaam: 'no',
+        karkunaanMulakaat: 0,
+        ajKisiKoKoiAchiBaatBtai: 'no',
+        quranCircle: 'no',
+        ajApnaMuhasibaKiya: 'no',
+        taqseemDawatiMasnuaat: 0
+      });
+    }
+    return days;
+  };
+
+  const fetchDayData = async () => {
     try {
       setLoading(true);
-      const currentDate = new Date();
-      const month = currentDate.toLocaleString('en-US', { month: 'long' });
-      const year = currentDate.getFullYear().toString();
       
-      const response = await axios.get(`/hami-reports/${month}/${year}`);
-      setCurrentReport(response.data);
-      setSelectedDate(new Date().getDate());
+      const response = await axios.get(`/hami-reports/day/${selectedMonth}/${selectedYear}/${selectedDate}`);
+      
+      // Check if we need to recreate the report structure (month/year changed or doesn't exist)
+      const needsNewReport = !currentReport || 
+                            currentReport.month !== selectedMonth || 
+                            currentReport.year !== selectedYear;
+      
+      if (response.data && response.data.success && response.data.day) {
+        // Day data found - use it
+        const day = response.data.day;
+        
+        if (needsNewReport) {
+          // Create new report structure with all days for the month
+          const days = createDefaultDaysArray();
+          // Replace the selected day with the fetched day data
+          const dayIndex = days.findIndex(d => d.date === selectedDate);
+          if (dayIndex !== -1) {
+            days[dayIndex] = { ...days[dayIndex], ...day };
+          } else {
+            days.push(day);
+          }
+          
+          setCurrentReport({
+            month: selectedMonth,
+            year: selectedYear,
+            days: days
+          });
+        } else {
+          // Update existing report with the fetched day data
+          const updatedDays = currentReport.days.map(d => {
+            if (d.date === selectedDate) {
+              return { ...d, ...day };
+            }
+            return d;
+          });
+          
+          // If day doesn't exist in the array, add it
+          const dayExists = updatedDays.some(d => d.date === selectedDate);
+          if (!dayExists) {
+            updatedDays.push(day);
+          }
+          
+          setCurrentReport({ ...currentReport, days: updatedDays });
+        }
+      } else {
+        // No day data found, create default structure
+        if (needsNewReport) {
+          const days = createDefaultDaysArray();
+          setCurrentReport({
+            month: selectedMonth,
+            year: selectedYear,
+            days: days
+          });
+        }
+      }
     } catch (error) {
-      console.error('Error fetching current report:', error);
-      setCurrentReport(null);
-      showToast('Error loading report. Please refresh the page.', 'error');
+      console.error('Error fetching day data:', error);
+      // Create default structure on error
+      if (!currentReport || currentReport.month !== selectedMonth || currentReport.year !== selectedYear) {
+        const days = createDefaultDaysArray();
+        setCurrentReport({
+          month: selectedMonth,
+          year: selectedYear,
+          days: days
+        });
+      }
+      showToast('Error loading day data. Showing default form.', 'error');
     } finally {
       setLoading(false);
     }
@@ -104,14 +227,10 @@ const HamiDailyReport = () => {
         return;
       }
 
-      const currentDate = new Date();
-      const currentMonth = currentDate.toLocaleString('en-US', { month: 'long' });
-      const currentYear = currentDate.getFullYear().toString();
-
       const dayData = {
         date: selectedDate,
-        month: currentMonth,
-        year: currentYear,
+        month: selectedMonth,
+        year: selectedYear,
         namaz: selectedDayData.namaz || 'no',
         hifz: selectedDayData.hifz || 'no',
         nazra: selectedDayData.nazra || 'no',
@@ -151,8 +270,16 @@ const HamiDailyReport = () => {
   };
 
   const getCurrentMonthName = () => {
-    if (!currentReport) return '';
-    return `${currentReport.month} ${currentReport.year}`;
+    return `${selectedMonth} ${selectedYear}`;
+  };
+  
+  const handleMonthChange = (e) => {
+    const selectedValue = e.target.value;
+    const selected = availableMonths.find(m => m.label === selectedValue);
+    if (selected) {
+      setSelectedMonth(selected.month);
+      setSelectedYear(selected.year);
+    }
   };
 
   if (loading) {
@@ -190,7 +317,7 @@ const HamiDailyReport = () => {
     <div className="max-w-4xl mx-auto">
       {/* Header */}
       <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between flex-wrap gap-4">
           <div>
             <h1 className="text-3xl font-bold text-gray-900 flex items-center space-x-3">
               <span>Daily Report</span>
@@ -198,7 +325,20 @@ const HamiDailyReport = () => {
                 Hami
               </span>
             </h1>
-            <p className="text-gray-600 mt-2">{getCurrentMonthName()}</p>
+            <div className="mt-2 flex items-center space-x-3">
+              <span className="text-sm font-medium text-gray-700">Select Month:</span>
+              <select
+                value={availableMonths.find(m => m.month === selectedMonth && m.year === selectedYear)?.label || `${selectedMonth} ${selectedYear}`}
+                onChange={handleMonthChange}
+                className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-white"
+              >
+                {availableMonths.map((monthOption) => (
+                  <option key={monthOption.label} value={monthOption.label}>
+                    {monthOption.label}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
           <div className="flex items-center space-x-4">
             <div className="flex items-center space-x-2">
