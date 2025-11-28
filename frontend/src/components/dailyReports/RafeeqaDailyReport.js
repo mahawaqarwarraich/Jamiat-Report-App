@@ -250,7 +250,7 @@ const RafeeqaDailyReport = () => {
         return;
       }
 
-      const response = await axios.post('/rafeeqa-reports/add-day', dayData);
+      const response = await axios.post(`/rafeeqa-reports/${selectedMonth}/${selectedYear}/${selectedDate}`, dayData);
 
       if (response.data && response.data.success) {
         setCurrentReport(response.data.report);

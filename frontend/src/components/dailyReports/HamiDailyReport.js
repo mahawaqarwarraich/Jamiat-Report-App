@@ -252,7 +252,7 @@ const HamiDailyReport = () => {
         return;
       }
 
-      const response = await axios.post('/hami-reports/add-day', dayData);
+      const response = await axios.post(`/hami-reports/${selectedMonth}/${selectedYear}/${selectedDate}`, dayData);
 
       if (response.data && response.data.success) {
         setCurrentReport(response.data.report);
