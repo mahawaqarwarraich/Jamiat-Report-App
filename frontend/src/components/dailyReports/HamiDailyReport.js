@@ -1,11 +1,13 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
-import { CheckIcon, XMarkIcon, CalendarIcon } from '@heroicons/react/24/outline';
+import { CheckIcon, XMarkIcon, CalendarIcon, ChevronDownIcon } from '@heroicons/react/24/outline';
 import Toast from '../Toast';
 import { useAuth } from '../../contexts/AuthContext';
+import { useReport } from '../../contexts/ReportContext';
 
 const HamiDailyReport = () => {
   const { user } = useAuth();
+  const { updateSelectedMonthYear } = useReport();
   const [currentReport, setCurrentReport] = useState(null);
   const [selectedDate, setSelectedDate] = useState(new Date().getDate());
   const [loading, setLoading] = useState(true);
@@ -29,24 +31,29 @@ const HamiDailyReport = () => {
         { 
           month: prevMonth, 
           year: prevYear, 
-          label: `${prevMonth} ${prevYear} (Available for first 30 days)`
+          label: `${prevMonth} ${prevYear}`,
+          tagline: '(Available for first 30 days)'
         },
         { 
           month: currentMonth, 
           year: currentYear, 
-          label: `${currentMonth} ${currentYear}` 
+          label: `${currentMonth} ${currentYear}`,
+          tagline: null
         }
       ]
     : [
         { 
           month: currentMonth, 
           year: currentYear, 
-          label: `${currentMonth} ${currentYear}` 
+          label: `${currentMonth} ${currentYear}`,
+          tagline: null
         }
       ];
   
   const [selectedMonth, setSelectedMonth] = useState(currentMonth);
   const [selectedYear, setSelectedYear] = useState(currentYear);
+  const [isMonthDropdownOpen, setIsMonthDropdownOpen] = useState(false);
+  const monthDropdownRef = useRef(null);
 
   const showToast = (message, type = 'success') => {
     setToast({ message, type });
@@ -55,6 +62,11 @@ const HamiDailyReport = () => {
   const hideToast = () => {
     setToast(null);
   };
+
+  // Update context when component mounts or month/year changes
+  useEffect(() => {
+    updateSelectedMonthYear(selectedMonth, selectedYear);
+  }, [selectedMonth, selectedYear]);
 
   // Fetch day data when month, year, or date changes
   useEffect(() => {
@@ -273,14 +285,26 @@ const HamiDailyReport = () => {
     return `${selectedMonth} ${selectedYear}`;
   };
   
-  const handleMonthChange = (e) => {
-    const selectedValue = e.target.value;
-    const selected = availableMonths.find(m => m.label === selectedValue);
-    if (selected) {
-      setSelectedMonth(selected.month);
-      setSelectedYear(selected.year);
-    }
+  const handleMonthChange = (monthOption) => {
+    setSelectedMonth(monthOption.month);
+    setSelectedYear(monthOption.year);
+    updateSelectedMonthYear(monthOption.month, monthOption.year);
+    setIsMonthDropdownOpen(false);
   };
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (monthDropdownRef.current && !monthDropdownRef.current.contains(event.target)) {
+        setIsMonthDropdownOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
 
   if (loading) {
     return (
@@ -314,36 +338,60 @@ const HamiDailyReport = () => {
   const selectedDayData = getSelectedDayData();
 
   return (
-    <div className="max-w-4xl mx-auto">
+    <div className="max-w-4xl mx-auto px-2 sm:px-4">
       {/* Header */}
-      <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-        <div className="flex items-center justify-between flex-wrap gap-4">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900 flex items-center space-x-3">
+      <div className="bg-white rounded-lg shadow-md p-4 sm:p-6 mb-6">
+        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+          <div className="flex-1 min-w-0">
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 flex flex-wrap items-center gap-2 sm:space-x-3">
               <span>Daily Report</span>
               <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-sm font-medium border bg-green-100 text-green-800 border-green-300">
                 Hami
               </span>
             </h1>
-            <div className="mt-2 flex items-center space-x-3">
-              <span className="text-sm font-medium text-gray-700">Select Month:</span>
-              <select
-                value={availableMonths.find(m => m.month === selectedMonth && m.year === selectedYear)?.label || `${selectedMonth} ${selectedYear}`}
-                onChange={handleMonthChange}
-                className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-white"
-              >
-                {availableMonths.map((monthOption) => (
-                  <option key={monthOption.label} value={monthOption.label}>
-                    {monthOption.label}
-                  </option>
-                ))}
-              </select>
+            <div className="mt-2 flex flex-col sm:flex-row sm:items-center gap-2 sm:space-x-3">
+              <span className="text-sm font-medium text-gray-700 whitespace-nowrap">Select Month:</span>
+              <div className="relative w-full sm:w-auto" ref={monthDropdownRef}>
+                <button
+                  type="button"
+                  onClick={() => setIsMonthDropdownOpen(!isMonthDropdownOpen)}
+                  className="w-full sm:w-auto min-w-[200px] flex items-center justify-between border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-white text-left"
+                >
+                  <span>
+                    {availableMonths.find(m => m.month === selectedMonth && m.year === selectedYear)?.label || `${selectedMonth} ${selectedYear}`}
+                  </span>
+                  <ChevronDownIcon className={`h-4 w-4 text-gray-500 transition-transform ${isMonthDropdownOpen ? 'transform rotate-180' : ''}`} />
+                </button>
+                {isMonthDropdownOpen && (
+                  <div className="absolute z-10 mt-1 w-full sm:w-auto min-w-[200px] bg-white border border-gray-300 rounded-md shadow-lg">
+                    {availableMonths.map((monthOption) => (
+                      <button
+                        key={`${monthOption.month}-${monthOption.year}`}
+                        type="button"
+                        onClick={() => handleMonthChange(monthOption)}
+                        className={`w-full text-left px-3 py-2 text-sm hover:bg-gray-100 ${
+                          monthOption.month === selectedMonth && monthOption.year === selectedYear
+                            ? 'bg-green-50 text-green-700'
+                            : 'text-gray-900'
+                        }`}
+                      >
+                        <div>
+                          <div className="font-medium">{monthOption.label}</div>
+                          {monthOption.tagline && (
+                            <div className="text-xs text-gray-500 mt-0.5">{monthOption.tagline}</div>
+                          )}
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
-          <div className="flex items-center space-x-4">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:space-x-4">
             <div className="flex items-center space-x-2">
-              <CalendarIcon className="h-5 w-5 text-gray-500" />
-              <span className="text-sm font-medium text-gray-700">Select Date:</span>
+              <CalendarIcon className="h-5 w-5 text-gray-500 flex-shrink-0" />
+              <span className="text-sm font-medium text-gray-700 whitespace-nowrap">Select Date:</span>
             </div>
             <select
               value={selectedDate}
@@ -353,7 +401,7 @@ const HamiDailyReport = () => {
                   setSelectedDate(newDate);
                 }
               }}
-              className="border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500"
+              className="w-full sm:w-auto border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500"
             >
               {currentReport?.days.map(day => (
                 <option key={day.date} value={day.date}>

@@ -1,11 +1,13 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
-import { CheckIcon, XMarkIcon, CalendarIcon } from '@heroicons/react/24/outline';
+import { CheckIcon, XMarkIcon, CalendarIcon, ChevronDownIcon } from '@heroicons/react/24/outline';
 import Toast from '../Toast';
 import { useAuth } from '../../contexts/AuthContext';
+import { useReport } from '../../contexts/ReportContext';
 
 const RuknDailyReport = () => {
   const { user } = useAuth();
+  const { updateSelectedMonthYear } = useReport();
   const [currentReport, setCurrentReport] = useState(null);
   const [selectedDate, setSelectedDate] = useState(new Date().getDate());
   const [loading, setLoading] = useState(true);
@@ -29,24 +31,29 @@ const RuknDailyReport = () => {
         { 
           month: prevMonth, 
           year: prevYear, 
-          label: `${prevMonth} ${prevYear} (Available for first 30 days)`
+          label: `${prevMonth} ${prevYear}`,
+          tagline: '(Available for first 30 days)'
         },
         { 
           month: currentMonth, 
           year: currentYear, 
-          label: `${currentMonth} ${currentYear}` 
+          label: `${currentMonth} ${currentYear}`,
+          tagline: null
         }
       ]
     : [
         { 
           month: currentMonth, 
           year: currentYear, 
-          label: `${currentMonth} ${currentYear}` 
+          label: `${currentMonth} ${currentYear}`,
+          tagline: null
         }
       ];
   
   const [selectedMonth, setSelectedMonth] = useState(currentMonth);
   const [selectedYear, setSelectedYear] = useState(currentYear);
+  const [isMonthDropdownOpen, setIsMonthDropdownOpen] = useState(false);
+  const monthDropdownRef = useRef(null);
 
   const showToast = (message, type = 'success') => {
     setToast({ message, type });
@@ -56,20 +63,104 @@ const RuknDailyReport = () => {
     setToast(null);
   };
 
+  // Update context when component mounts or month/year changes
   useEffect(() => {
-    fetchCurrentReport();
+    updateSelectedMonthYear(selectedMonth, selectedYear);
   }, [selectedMonth, selectedYear]);
 
-  const fetchCurrentReport = async () => {
+  // Fetch day data when month, year, or date changes
+  useEffect(() => {
+    fetchDayData();
+  }, [selectedMonth, selectedYear, selectedDate]);
+
+  const createDefaultDaysArray = () => {
+    const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 
+                       'July', 'August', 'September', 'October', 'November', 'December'];
+    const monthIndex = monthNames.indexOf(selectedMonth);
+    const daysInMonth = new Date(parseInt(selectedYear), monthIndex + 1, 0).getDate();
+    
+    const days = [];
+    for (let i = 1; i <= daysInMonth; i++) {
+      days.push({
+        date: i,
+        month: selectedMonth,
+        year: selectedYear
+      });
+    }
+    return days;
+  };
+
+  const fetchDayData = async () => {
     try {
       setLoading(true);
-      const response = await axios.get(`/rukn-reports/${selectedMonth}/${selectedYear}`);
-      setCurrentReport(response.data);
-      setSelectedDate(new Date().getDate());
+      
+      const response = await axios.get(`/rukn-reports/day/${selectedMonth}/${selectedYear}/${selectedDate}`);
+      
+      // Check if we need to recreate the report structure (month/year changed or doesn't exist)
+      const needsNewReport = !currentReport || 
+                            currentReport.month !== selectedMonth || 
+                            currentReport.year !== selectedYear;
+      
+      if (response.data && response.data.success && response.data.day) {
+        // Day data found - use it
+        const day = response.data.day;
+        
+        if (needsNewReport) {
+          // Create new report structure with all days for the month
+          const days = createDefaultDaysArray();
+          // Replace the selected day with the fetched day data
+          const dayIndex = days.findIndex(d => d.date === selectedDate);
+          if (dayIndex !== -1) {
+            days[dayIndex] = { ...days[dayIndex], ...day };
+          } else {
+            days.push(day);
+          }
+          
+          setCurrentReport({
+            month: selectedMonth,
+            year: selectedYear,
+            days: days
+          });
+        } else {
+          // Update existing report with the fetched day data
+          const updatedDays = currentReport.days.map(d => {
+            if (d.date === selectedDate) {
+              return { ...d, ...day };
+            }
+            return d;
+          });
+          
+          // If day doesn't exist in the array, add it
+          const dayExists = updatedDays.some(d => d.date === selectedDate);
+          if (!dayExists) {
+            updatedDays.push(day);
+          }
+          
+          setCurrentReport({ ...currentReport, days: updatedDays });
+        }
+      } else {
+        // No day data found, create default structure
+        if (needsNewReport) {
+          const days = createDefaultDaysArray();
+          setCurrentReport({
+            month: selectedMonth,
+            year: selectedYear,
+            days: days
+          });
+        }
+      }
     } catch (error) {
-      console.error('Error fetching current report:', error);
-      setCurrentReport(null);
-      showToast('Error loading report. Please refresh the page.', 'error');
+      console.error('Error fetching day data:', error);
+      // Create default structure on error
+      if (!currentReport || currentReport.month !== selectedMonth || currentReport.year !== selectedYear) {
+        const days = createDefaultDaysArray();
+        setCurrentReport({
+          month: selectedMonth,
+          year: selectedYear,
+          days: days
+        });
+      }
+      showToast('Error loading day data. Showing default form.', 'error');
     } finally {
       setLoading(false);
     }
@@ -91,6 +182,12 @@ const RuknDailyReport = () => {
     });
 
     setCurrentReport({ ...currentReport, days: updatedDays });
+  };
+
+  const getFieldValue = (fieldName) => {
+    const selectedDayData = getSelectedDayData();
+    if (!selectedDayData) return 'no';
+    return selectedDayData[fieldName] || 'no';
   };
 
   const validateDayData = (dayData) => {
@@ -136,31 +233,32 @@ const RuknDailyReport = () => {
         return;
       }
 
+      // Build dayData object with all Rukn fields
       const dayData = {
         date: selectedDate,
         month: selectedMonth,
-        year: selectedYear,
-        namaz: selectedDayData.namaz || 'no',
-        hifz: selectedDayData.hifz || 'no',
-        nazra: selectedDayData.nazra || 'no',
-        tafseer: selectedDayData.tafseer || 'no',
-        hadees: selectedDayData.hadees || 'no',
-        literature: selectedDayData.literature || 'no',
-        ghrKaKaam: selectedDayData.ghrKaKaam || 'no',
-        karkunaanMulakaat: selectedDayData.karkunaanMulakaat || 0,
-        darsiKutab: selectedDayData.darsiKutab || 'no',
-        amoomiAfraadMulakaat: selectedDayData.amoomiAfraadMulakaat || 0,
-        khatootTadaad: selectedDayData.khatootTadaad || 0
+        year: selectedYear
       };
 
-      const validationErrors = validateDayData(dayData);
-      if (validationErrors.length > 0) {
-        showToast(`Validation errors: ${validationErrors.join(', ')}`, 'error');
-        setSaving(false);
-        return;
-      }
+      // Add all Rukn fields
+      const ruknFields = [
+        'namazBarwaqtAdaigi', 'qazaHui', 'nawafalKoshish', 'kashuKoshish',
+        'nazraQuran', 'hifzQuran', 'mutaleyaTafseer', 'asoolQuran',
+        'amalDaramadQuran', 'mutaleyaHadees', 'asoolHadees', 'amalDaramadHadees',
+        'lafziTarjumaKoshish', 'tajweedKoshish', 'mutaleyaLiterature',
+        'baadAzRukniyat', 'amalDaramadLiterature', 'karkunaanDiscussionLiterature',
+        'khoobiBuraiKoshish', 'ghrIkhlaaqMaamlaat', 'ghrDawat',
+        'khidmatDiscussionHadia', 'taleemBehter', 'takseemLiterature',
+        'mutaiyanAfraadSargarmi', 'quranClassDiscussion', 'zerTarbiyatKoshish',
+        'khatootMulakaatDisTabsara', 'mulakaatKarkunaan', 'mulakaatAmoomiAfraad',
+        'khatootArsaal', 'mausoolKhatoot', 'zaatiMuhasiba'
+      ];
 
-      const response = await axios.post('/rukn-reports/add-day', dayData);
+      ruknFields.forEach(field => {
+        dayData[field] = selectedDayData[field] || 'no';
+      });
+
+      const response = await axios.post(`/rukn-reports/${selectedMonth}/${selectedYear}/${selectedDate}`, dayData);
 
       if (response.data && response.data.success) {
         setCurrentReport(response.data.report);
@@ -181,14 +279,26 @@ const RuknDailyReport = () => {
     return `${selectedMonth} ${selectedYear}`;
   };
   
-  const handleMonthChange = (e) => {
-    const selectedValue = e.target.value;
-    const selected = availableMonths.find(m => m.label === selectedValue);
-    if (selected) {
-      setSelectedMonth(selected.month);
-      setSelectedYear(selected.year);
-    }
+  const handleMonthChange = (monthOption) => {
+    setSelectedMonth(monthOption.month);
+    setSelectedYear(monthOption.year);
+    updateSelectedMonthYear(monthOption.month, monthOption.year);
+    setIsMonthDropdownOpen(false);
   };
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (monthDropdownRef.current && !monthDropdownRef.current.contains(event.target)) {
+        setIsMonthDropdownOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
 
   if (loading) {
     return (
@@ -221,37 +331,112 @@ const RuknDailyReport = () => {
 
   const selectedDayData = getSelectedDayData();
 
+  // Field labels mapping
+  const fieldLabels = {
+    namazBarwaqtAdaigi: 'Namazon ki barwaqt adaigi ki?',
+    qazaHui: 'Qaza hui?',
+    nawafalKoshish: 'Nawafal parhy?',
+    kashuKoshish: 'Kashu khazu ki koshish ki?',
+    nazraQuran: 'Nazra Quran',
+    hifzQuran: 'Hifz Quran',
+    mutaleyaTafseer: 'Mutaleya Tafseer',
+    asoolQuran: 'Asool Quran',
+    amalDaramadQuran: 'Amal Daramad (Asool Quran)',
+    mutaleyaHadees: 'Mutaleya Hadees',
+    asoolHadees: 'Asool Hadees',
+    amalDaramadHadees: 'Amal Daramad (Asool Hadees)',
+    lafziTarjumaKoshish: 'Lafzi Tarjuma ki koshish',
+    tajweedKoshish: 'Tajweed seekhany ki Koshish',
+    mutaleyaLiterature: 'Mutaleya Literature',
+    baadAzRukniyat: 'Baad Az Rukniyat',
+    amalDaramadLiterature: 'Amal Daramad (Literature)',
+    karkunaanDiscussionLiterature: 'Karkunaan Discussion (Literature)',
+    khoobiBuraiKoshish: 'Khoobi apnaany Burai chorny ki Koshish',
+    ghrIkhlaaqMaamlaat: 'Ghr main ikhlaaq o maamlaat ki suratehaal',
+    ghrDawat: 'Ghr main dawat ki koshish',
+    khidmatDiscussionHadia: 'Khidmat/Discussion/Haddia',
+    taleemBehter: 'Taleemi kaarkardagi ki behteri ki koshish',
+    takseemLiterature: 'Takseem Literature',
+    mutaiyanAfraadSargarmi: 'Mutaiyan Afraad (Sargarmi)',
+    quranClassDiscussion: 'Quran Class Discussion',
+    zerTarbiyatKoshish: 'Zer e Tarbiyat afraad (Koshish)',
+    khatootMulakaatDisTabsara: 'Khatoot/Mulakaat/Discussion/Tabsara',
+    mulakaatKarkunaan: 'Mulakaat Karkunaan',
+    mulakaatAmoomiAfraad: 'Mulakaat Amoomi Afraad',
+    khatootArsaal: 'Khatoot Arsaal',
+    mausoolKhatoot: 'Mausool Khatoot',
+    zaatiMuhasiba: 'Zaati Muhasiba'
+  };
+
+  // All Rukn fields
+  const ruknFields = [
+    'namazBarwaqtAdaigi', 'qazaHui', 'nawafalKoshish', 'kashuKoshish',
+    'nazraQuran', 'hifzQuran', 'mutaleyaTafseer', 'asoolQuran',
+    'amalDaramadQuran', 'mutaleyaHadees', 'asoolHadees', 'amalDaramadHadees',
+    'lafziTarjumaKoshish', 'tajweedKoshish', 'mutaleyaLiterature',
+    'baadAzRukniyat', 'amalDaramadLiterature', 'karkunaanDiscussionLiterature',
+    'khoobiBuraiKoshish', 'ghrIkhlaaqMaamlaat', 'ghrDawat',
+    'khidmatDiscussionHadia', 'taleemBehter', 'takseemLiterature',
+    'mutaiyanAfraadSargarmi', 'quranClassDiscussion', 'zerTarbiyatKoshish',
+    'khatootMulakaatDisTabsara', 'mulakaatKarkunaan', 'mulakaatAmoomiAfraad',
+    'khatootArsaal', 'mausoolKhatoot', 'zaatiMuhasiba'
+  ];
+
   return (
-    <div className="max-w-4xl mx-auto">
+    <div className="max-w-6xl mx-auto px-2 sm:px-4">
       {/* Header */}
-      <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-        <div className="flex items-center justify-between flex-wrap gap-4">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900 flex items-center space-x-3">
+      <div className="bg-white rounded-lg shadow-md p-4 sm:p-6 mb-6">
+        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+          <div className="flex-1 min-w-0">
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 flex flex-wrap items-center gap-2 sm:space-x-3">
               <span>Daily Report</span>
               <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-sm font-medium border bg-blue-100 text-blue-800 border-blue-300">
                 Rukn
               </span>
             </h1>
-            <div className="mt-2 flex items-center space-x-3">
-              <span className="text-sm font-medium text-gray-700">Select Month:</span>
-              <select
-                value={availableMonths.find(m => m.month === selectedMonth && m.year === selectedYear)?.label || `${selectedMonth} ${selectedYear}`}
-                onChange={handleMonthChange}
-                className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-white"
-              >
-                {availableMonths.map((monthOption) => (
-                  <option key={monthOption.label} value={monthOption.label}>
-                    {monthOption.label}
-                  </option>
-                ))}
-              </select>
+            <div className="mt-2 flex flex-col sm:flex-row sm:items-center gap-2 sm:space-x-3">
+              <span className="text-sm font-medium text-gray-700 whitespace-nowrap">Select Month:</span>
+              <div className="relative w-full sm:w-auto" ref={monthDropdownRef}>
+                <button
+                  type="button"
+                  onClick={() => setIsMonthDropdownOpen(!isMonthDropdownOpen)}
+                  className="w-full sm:w-auto min-w-[200px] flex items-center justify-between border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-white text-left"
+                >
+                  <span>
+                    {availableMonths.find(m => m.month === selectedMonth && m.year === selectedYear)?.label || `${selectedMonth} ${selectedYear}`}
+                  </span>
+                  <ChevronDownIcon className={`h-4 w-4 text-gray-500 transition-transform ${isMonthDropdownOpen ? 'transform rotate-180' : ''}`} />
+                </button>
+                {isMonthDropdownOpen && (
+                  <div className="absolute z-10 mt-1 w-full sm:w-auto min-w-[200px] bg-white border border-gray-300 rounded-md shadow-lg">
+                    {availableMonths.map((monthOption) => (
+                      <button
+                        key={`${monthOption.month}-${monthOption.year}`}
+                        type="button"
+                        onClick={() => handleMonthChange(monthOption)}
+                        className={`w-full text-left px-3 py-2 text-sm hover:bg-gray-100 ${
+                          monthOption.month === selectedMonth && monthOption.year === selectedYear
+                            ? 'bg-green-50 text-green-700'
+                            : 'text-gray-900'
+                        }`}
+                      >
+                        <div>
+                          <div className="font-medium">{monthOption.label}</div>
+                          {monthOption.tagline && (
+                            <div className="text-xs text-gray-500 mt-0.5">{monthOption.tagline}</div>
+                          )}
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
-          <div className="flex items-center space-x-4">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:space-x-4">
             <div className="flex items-center space-x-2">
-              <CalendarIcon className="h-5 w-5 text-gray-500" />
-              <span className="text-sm font-medium text-gray-700">Select Date:</span>
+              <CalendarIcon className="h-5 w-5 text-gray-500 flex-shrink-0" />
+              <span className="text-sm font-medium text-gray-700 whitespace-nowrap">Select Date:</span>
             </div>
             <select
               value={selectedDate}
@@ -261,7 +446,7 @@ const RuknDailyReport = () => {
                   setSelectedDate(newDate);
                 }
               }}
-              className="border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500"
+              className="w-full sm:w-auto border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500"
             >
               {currentReport?.days.map(day => (
                 <option key={day.date} value={day.date}>
@@ -281,314 +466,70 @@ const RuknDailyReport = () => {
           </h2>
 
           <div className="space-y-6">
-            {/* Namaz */}
+            {/* Namaz Barwaqt Adaigi */}
             <div className="border-b border-gray-200 pb-4">
-              <label className="text-lg font-medium text-gray-900 mb-3 block">Namaz</label>
+              <label className="text-lg font-medium text-gray-900 mb-3 block">
+                {fieldLabels[ruknFields[0]] || ruknFields[0]}
+              </label>
               <div className="flex space-x-4">
                 <button
-                  onClick={() => handleFieldChange('namaz', 'yes')}
+                  onClick={() => handleFieldChange(ruknFields[0], 'yes')}
                   className={`flex items-center space-x-2 px-4 py-2 rounded-md border ${
-                    (selectedDayData.namaz || 'no') === 'yes'
+                    getFieldValue(ruknFields[0]) === 'yes'
                       ? 'bg-green-100 border-green-500 text-green-700'
                       : 'bg-gray-50 border-gray-300 text-gray-700 hover:bg-gray-100'
                   }`}
                 >
                   <CheckIcon className="h-5 w-5" />
-                  <span>Completed</span>
+                  <span>Yes</span>
                 </button>
                 <button
-                  onClick={() => handleFieldChange('namaz', 'no')}
+                  onClick={() => handleFieldChange(ruknFields[0], 'no')}
                   className={`flex items-center space-x-2 px-4 py-2 rounded-md border ${
-                    (selectedDayData.namaz || 'no') === 'no'
+                    getFieldValue(ruknFields[0]) === 'no'
                       ? 'bg-red-100 border-red-500 text-red-700'
                       : 'bg-gray-50 border-gray-300 text-gray-700 hover:bg-gray-100'
                   }`}
                 >
                   <XMarkIcon className="h-5 w-5" />
-                  <span>Missed</span>
+                  <span>No</span>
                 </button>
               </div>
             </div>
 
-            {/* Religious Activities - Rukn Specific */}
+            {/* Rukn Fields - Grid Layout */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* Hifz */}
-              <div className="border-b border-gray-200 pb-4">
-                <label className="text-lg font-medium text-gray-900 mb-3 block">Hifz</label>
-                <div className="flex space-x-4">
-                  <button
-                    onClick={() => handleFieldChange('hifz', 'yes')}
-                    className={`flex items-center space-x-2 px-4 py-2 rounded-md border ${
-                      (selectedDayData.hifz || 'no') === 'yes'
-                        ? 'bg-green-100 border-green-500 text-green-700'
-                        : 'bg-gray-50 border-gray-300 text-gray-700 hover:bg-gray-100'
-                    }`}
-                  >
-                    <CheckIcon className="h-5 w-5" />
-                    <span>Yes</span>
-                  </button>
-                  <button
-                    onClick={() => handleFieldChange('hifz', 'no')}
-                    className={`flex items-center space-x-2 px-4 py-2 rounded-md border ${
-                      (selectedDayData.hifz || 'no') === 'no'
-                        ? 'bg-red-100 border-red-500 text-red-700'
-                        : 'bg-gray-50 border-gray-300 text-gray-700 hover:bg-gray-100'
-                    }`}
-                  >
-                    <XMarkIcon className="h-5 w-5" />
-                    <span>No</span>
-                  </button>
+              {ruknFields.slice(1).map((fieldName) => (
+                <div key={fieldName} className="border-b border-gray-200 pb-4">
+                  <label className="text-lg font-medium text-gray-900 mb-3 block">
+                    {fieldLabels[fieldName] || fieldName}
+                  </label>
+                  <div className="flex space-x-4">
+                    <button
+                      onClick={() => handleFieldChange(fieldName, 'yes')}
+                      className={`flex items-center space-x-2 px-4 py-2 rounded-md border ${
+                        getFieldValue(fieldName) === 'yes'
+                          ? 'bg-green-100 border-green-500 text-green-700'
+                          : 'bg-gray-50 border-gray-300 text-gray-700 hover:bg-gray-100'
+                      }`}
+                    >
+                      <CheckIcon className="h-5 w-5" />
+                      <span>Yes</span>
+                    </button>
+                    <button
+                      onClick={() => handleFieldChange(fieldName, 'no')}
+                      className={`flex items-center space-x-2 px-4 py-2 rounded-md border ${
+                        getFieldValue(fieldName) === 'no'
+                          ? 'bg-red-100 border-red-500 text-red-700'
+                          : 'bg-gray-50 border-gray-300 text-gray-700 hover:bg-gray-100'
+                      }`}
+                    >
+                      <XMarkIcon className="h-5 w-5" />
+                      <span>No</span>
+                    </button>
+                  </div>
                 </div>
-              </div>
-
-              {/* Nazra */}
-              <div className="border-b border-gray-200 pb-4">
-                <label className="text-lg font-medium text-gray-900 mb-3 block">Nazra</label>
-                <div className="flex space-x-4">
-                  <button
-                    onClick={() => handleFieldChange('nazra', 'yes')}
-                    className={`flex items-center space-x-2 px-4 py-2 rounded-md border ${
-                      (selectedDayData.nazra || 'no') === 'yes'
-                        ? 'bg-green-100 border-green-500 text-green-700'
-                        : 'bg-gray-50 border-gray-300 text-gray-700 hover:bg-gray-100'
-                    }`}
-                  >
-                    <CheckIcon className="h-5 w-5" />
-                    <span>Yes</span>
-                  </button>
-                  <button
-                    onClick={() => handleFieldChange('nazra', 'no')}
-                    className={`flex items-center space-x-2 px-4 py-2 rounded-md border ${
-                      (selectedDayData.nazra || 'no') === 'no'
-                        ? 'bg-red-100 border-red-500 text-red-700'
-                        : 'bg-gray-50 border-gray-300 text-gray-700 hover:bg-gray-100'
-                    }`}
-                  >
-                    <XMarkIcon className="h-5 w-5" />
-                    <span>No</span>
-                  </button>
-                </div>
-              </div>
-
-              {/* Tafseer */}
-              <div className="border-b border-gray-200 pb-4">
-                <label className="text-lg font-medium text-gray-900 mb-3 block">Tafseer</label>
-                <div className="flex space-x-4">
-                  <button
-                    onClick={() => handleFieldChange('tafseer', 'yes')}
-                    className={`flex items-center space-x-2 px-4 py-2 rounded-md border ${
-                      (selectedDayData.tafseer || 'no') === 'yes'
-                        ? 'bg-green-100 border-green-500 text-green-700'
-                        : 'bg-gray-50 border-gray-300 text-gray-700 hover:bg-gray-100'
-                    }`}
-                  >
-                    <CheckIcon className="h-5 w-5" />
-                    <span>Yes</span>
-                  </button>
-                  <button
-                    onClick={() => handleFieldChange('tafseer', 'no')}
-                    className={`flex items-center space-x-2 px-4 py-2 rounded-md border ${
-                      (selectedDayData.tafseer || 'no') === 'no'
-                        ? 'bg-red-100 border-red-500 text-red-700'
-                        : 'bg-gray-50 border-gray-300 text-gray-700 hover:bg-gray-100'
-                    }`}
-                  >
-                    <XMarkIcon className="h-5 w-5" />
-                    <span>No</span>
-                  </button>
-                </div>
-              </div>
-
-              {/* Hadees */}
-              <div className="border-b border-gray-200 pb-4">
-                <label className="text-lg font-medium text-gray-900 mb-3 block">Hadees</label>
-                <div className="flex space-x-4">
-                  <button
-                    onClick={() => handleFieldChange('hadees', 'yes')}
-                    className={`flex items-center space-x-2 px-4 py-2 rounded-md border ${
-                      (selectedDayData.hadees || 'no') === 'yes'
-                        ? 'bg-green-100 border-green-500 text-green-700'
-                        : 'bg-gray-50 border-gray-300 text-gray-700 hover:bg-gray-100'
-                    }`}
-                  >
-                    <CheckIcon className="h-5 w-5" />
-                    <span>Yes</span>
-                  </button>
-                  <button
-                    onClick={() => handleFieldChange('hadees', 'no')}
-                    className={`flex items-center space-x-2 px-4 py-2 rounded-md border ${
-                      (selectedDayData.hadees || 'no') === 'no'
-                        ? 'bg-red-100 border-red-500 text-red-700'
-                        : 'bg-gray-50 border-gray-300 text-gray-700 hover:bg-gray-100'
-                    }`}
-                  >
-                    <XMarkIcon className="h-5 w-5" />
-                    <span>No</span>
-                  </button>
-                </div>
-              </div>
-
-              {/* Literature */}
-              <div className="border-b border-gray-200 pb-4">
-                <label className="text-lg font-medium text-gray-900 mb-3 block">Literature</label>
-                <div className="flex space-x-4">
-                  <button
-                    onClick={() => handleFieldChange('literature', 'yes')}
-                    className={`flex items-center space-x-2 px-4 py-2 rounded-md border ${
-                      (selectedDayData.literature || 'no') === 'yes'
-                        ? 'bg-green-100 border-green-500 text-green-700'
-                        : 'bg-gray-50 border-gray-300 text-gray-700 hover:bg-gray-100'
-                    }`}
-                  >
-                    <CheckIcon className="h-5 w-5" />
-                    <span>Yes</span>
-                  </button>
-                  <button
-                    onClick={() => handleFieldChange('literature', 'no')}
-                    className={`flex items-center space-x-2 px-4 py-2 rounded-md border ${
-                      (selectedDayData.literature || 'no') === 'no'
-                        ? 'bg-red-100 border-red-500 text-red-700'
-                        : 'bg-gray-50 border-gray-300 text-gray-700 hover:bg-gray-100'
-                    }`}
-                  >
-                    <XMarkIcon className="h-5 w-5" />
-                    <span>No</span>
-                  </button>
-                </div>
-              </div>
-
-              {/* Ghar ka Kaam */}
-              <div className="border-b border-gray-200 pb-4">
-                <label className="text-lg font-medium text-gray-900 mb-3 block">Ghar ka Kaam</label>
-                <div className="flex space-x-4">
-                  <button
-                    onClick={() => handleFieldChange('ghrKaKaam', 'yes')}
-                    className={`flex items-center space-x-2 px-4 py-2 rounded-md border ${
-                      (selectedDayData.ghrKaKaam || 'no') === 'yes'
-                        ? 'bg-green-100 border-green-500 text-green-700'
-                        : 'bg-gray-50 border-gray-300 text-gray-700 hover:bg-gray-100'
-                    }`}
-                  >
-                    <CheckIcon className="h-5 w-5" />
-                    <span>Yes</span>
-                  </button>
-                  <button
-                    onClick={() => handleFieldChange('ghrKaKaam', 'no')}
-                    className={`flex items-center space-x-2 px-4 py-2 rounded-md border ${
-                      (selectedDayData.ghrKaKaam || 'no') === 'no'
-                        ? 'bg-red-100 border-red-500 text-red-700'
-                        : 'bg-gray-50 border-gray-300 text-gray-700 hover:bg-gray-100'
-                    }`}
-                  >
-                    <XMarkIcon className="h-5 w-5" />
-                    <span>No</span>
-                  </button>
-                </div>
-              </div>
-
-              {/* Darsi Kutab - Rukn Specific */}
-              <div className="border-b border-gray-200 pb-4">
-                <label className="text-lg font-medium text-gray-900 mb-3 block">Darsi Kutab</label>
-                <div className="flex space-x-4">
-                  <button
-                    onClick={() => handleFieldChange('darsiKutab', 'yes')}
-                    className={`flex items-center space-x-2 px-4 py-2 rounded-md border ${
-                      (selectedDayData.darsiKutab || 'no') === 'yes'
-                        ? 'bg-green-100 border-green-500 text-green-700'
-                        : 'bg-gray-50 border-gray-300 text-gray-700 hover:bg-gray-100'
-                    }`}
-                  >
-                    <CheckIcon className="h-5 w-5" />
-                    <span>Yes</span>
-                  </button>
-                  <button
-                    onClick={() => handleFieldChange('darsiKutab', 'no')}
-                    className={`flex items-center space-x-2 px-4 py-2 rounded-md border ${
-                      (selectedDayData.darsiKutab || 'no') === 'no'
-                        ? 'bg-red-100 border-red-500 text-red-700'
-                        : 'bg-gray-50 border-gray-300 text-gray-700 hover:bg-gray-100'
-                    }`}
-                  >
-                    <XMarkIcon className="h-5 w-5" />
-                    <span>No</span>
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            {/* Numeric Fields - Rukn Specific */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Karkunaan Mulakaat</label>
-                <input
-                  type="number"
-                  min="0"
-                  step="1"
-                  value={selectedDayData.karkunaanMulakaat || ''}
-                  onChange={(e) => {
-                    const value = parseInt(e.target.value) || 0;
-                    const validValue = Math.max(0, value);
-                    handleFieldChange('karkunaanMulakaat', validValue);
-                  }}
-                  onBlur={(e) => {
-                    const value = parseInt(e.target.value) || 0;
-                    const validValue = Math.max(0, value);
-                    if (value !== validValue) {
-                      handleFieldChange('karkunaanMulakaat', validValue);
-                    }
-                  }}
-                  placeholder="Number of meetings"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Amoomi Afraad Mulakaat</label>
-                <input
-                  type="number"
-                  min="0"
-                  step="1"
-                  value={selectedDayData.amoomiAfraadMulakaat || ''}
-                  onChange={(e) => {
-                    const value = parseInt(e.target.value) || 0;
-                    const validValue = Math.max(0, value);
-                    handleFieldChange('amoomiAfraadMulakaat', validValue);
-                  }}
-                  onBlur={(e) => {
-                    const value = parseInt(e.target.value) || 0;
-                    const validValue = Math.max(0, value);
-                    if (value !== validValue) {
-                      handleFieldChange('amoomiAfraadMulakaat', validValue);
-                    }
-                  }}
-                  placeholder="Number of general meetings"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Khatoot Tadaad</label>
-                <input
-                  type="number"
-                  min="0"
-                  step="1"
-                  value={selectedDayData.khatootTadaad || ''}
-                  onChange={(e) => {
-                    const value = parseInt(e.target.value) || 0;
-                    const validValue = Math.max(0, value);
-                    handleFieldChange('khatootTadaad', validValue);
-                  }}
-                  onBlur={(e) => {
-                    const value = parseInt(e.target.value) || 0;
-                    const validValue = Math.max(0, value);
-                    if (value !== validValue) {
-                      handleFieldChange('khatootTadaad', validValue);
-                    }
-                  }}
-                  placeholder="Number of letters"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500"
-                />
-              </div>
+              ))}
             </div>
           </div>
 
