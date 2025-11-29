@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { ArrowDownTrayIcon, DocumentTextIcon } from '@heroicons/react/24/outline';
+import { ArrowDownTrayIcon, DocumentTextIcon, EyeIcon } from '@heroicons/react/24/outline';
 import Toast from '../Toast';
 import { useReport } from '../../contexts/ReportContext';
 
@@ -190,14 +190,23 @@ const UmeedwarPDFDownload = () => {
             monthly statistics, and Q&A responses for {getCurrentMonthName()}.
           </p>
 
-          <button
-            onClick={handleDownload}
-            disabled={downloading || !stats}
-            className="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            <ArrowDownTrayIcon className="h-5 w-5 mr-2" />
-            {downloading ? 'Generating PDF...' : 'Download PDF Report'}
-          </button>
+          <div className="flex items-center justify-center gap-4">
+            <button
+              onClick={handleDownload}
+              disabled={downloading || !stats}
+              className="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <ArrowDownTrayIcon className="h-5 w-5 mr-2" />
+              {downloading ? 'Generating PDF...' : 'Download PDF Report'}
+            </button>
+
+            <button
+              className="inline-flex items-center px-6 py-3 border border-gray-300 text-base font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
+            >
+              <EyeIcon className="h-5 w-5 mr-2" />
+              View PDF
+            </button>
+          </div>
         </div>
       </div>
 
