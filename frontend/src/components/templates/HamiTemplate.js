@@ -202,43 +202,46 @@ const HamiTemplate = () => {
       </div>
 
       {/* Table */}
-      <div className="mb-10 overflow-x-auto">
-        <table className="min-w-full border-2 border-gray-800" style={{ borderCollapse: 'collapse', fontSize: '14px' }}>
-          <thead>
-            <tr className="bg-gray-300">
-              <th className="border-2 border-gray-800 px-4 py-3 text-left font-bold text-gray-900 bg-gray-400" style={{ minWidth: '150px' }}>
-                Date
-              </th>
-              {daysArray.map((day) => (
-                <th
-                  key={day}
-                  className="border-2 border-gray-800 px-2 py-2 text-center font-bold text-gray-900 bg-gray-400"
-                  style={{ minWidth: '45px', width: '45px' }}
-                >
-                  {day}
+      <div className="mb-10 w-full overflow-hidden">
+        <div className="w-full" style={{ transform: 'scale(0.95)', transformOrigin: 'top left' }}>
+          <table className="w-full border-2 border-gray-800" style={{ borderCollapse: 'collapse', fontSize: '13px', tableLayout: 'fixed', width: '100%' }}>
+            <thead>
+              <tr className="bg-gray-300">
+                <th className="border-2 border-gray-800 px-3 py-2 text-left font-bold text-gray-900 bg-gray-400" style={{ width: '150px' }}>
+                  Date
                 </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {/* Field rows */}
-            {hamiFields.map((field, index) => (
-              <tr key={field} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
-                <td className="border-2 border-gray-800 px-4 py-2 font-semibold text-gray-900 bg-gray-200 text-left" style={{ whiteSpace: 'nowrap' }}>
-                  {fieldLabels[field]}
-                </td>
                 {daysArray.map((day) => (
-                  <td
-                    key={`${field}-${day}`}
-                    className="border-2 border-gray-800 px-2 py-2 text-center"
+                  <th
+                    key={day}
+                    className="border-2 border-gray-800 px-1 py-2 text-center font-bold text-gray-900 bg-gray-400"
+                    style={{ width: `${(100 - 150) / daysArray.length}%` }}
                   >
-                    {renderCell(day, field)}
-                  </td>
+                    {day}
+                  </th>
                 ))}
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {/* Field rows */}
+              {hamiFields.map((field, index) => (
+                <tr key={field} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                  <td className="border-2 border-gray-800 px-3 py-2 font-semibold text-gray-900 bg-gray-200 text-left" style={{ fontSize: '12px', wordBreak: 'break-word', lineHeight: '1.3' }}>
+                    {fieldLabels[field]}
+                  </td>
+                  {daysArray.map((day) => (
+                    <td
+                      key={`${field}-${day}`}
+                      className="border-2 border-gray-800 px-1 py-2 text-center"
+                      style={{ fontSize: '12px' }}
+                    >
+                      {renderCell(day, field)}
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       {/* Q/A Section */}
