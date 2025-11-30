@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import { useNavigate } from 'react-router-dom';
 import { ArrowDownTrayIcon, DocumentTextIcon, EyeIcon } from '@heroicons/react/24/outline';
 import Toast from '../Toast';
 import { useReport } from '../../contexts/ReportContext';
 
 const RafeeqaPDFDownload = () => {
   const { selectedMonth, selectedYear } = useReport();
+  const navigate = useNavigate();
   const [days, setDays] = useState([]);
   const [loading, setLoading] = useState(true);
   const [downloading, setDownloading] = useState(false);
@@ -44,30 +46,32 @@ const RafeeqaPDFDownload = () => {
 
   const handleDownload = async () => {
     setDownloading(true);
-
+  
     try {
       if (!days || days.length === 0) {
         showToast('No report available for download', 'error');
+        setDownloading(false);
         return;
       }
-
-      const response = await axios.get(`/reports/pdf/${selectedMonth}/${selectedYear}`, {
-        responseType: 'blob'
+  
+      const response = await axios.get(`/rafeeqa-reports/${selectedMonth}/${selectedYear}/pdf`, {
+        responseType: 'arraybuffer'
       });
-
-      // Create a blob URL and trigger download
+  
       const blob = new Blob([response.data], { type: 'application/pdf' });
       const url = window.URL.createObjectURL(blob);
+  
       const link = document.createElement('a');
       link.href = url;
-      link.download = `islamic-report-${selectedMonth}-${selectedYear}.pdf`;
+      link.download = `rafeeqa-report-${selectedMonth}-${selectedYear}.pdf`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
       window.URL.revokeObjectURL(url);
-
+  
       showToast('PDF downloaded successfully!');
       setTimeout(() => hideToast(), 3000);
+  
     } catch (error) {
       console.error('Error downloading PDF:', error);
       showToast('Error downloading PDF. Please try again.', 'error');
@@ -200,6 +204,14 @@ const RafeeqaPDFDownload = () => {
             </button>
 
             <button
+              type="button"
+              onClick={() => {
+                try {
+                  navigate('/rafeeqa-template');
+                } catch (error) {
+                  console.error('Navigation error:', error);
+                }
+              }}
               className="inline-flex items-center px-6 py-3 border border-gray-300 text-base font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
             >
               <EyeIcon className="h-5 w-5 mr-2" />
