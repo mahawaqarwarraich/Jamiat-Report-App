@@ -198,13 +198,13 @@ const RuknPDFDownload = () => {
             <button
               onClick={handleDownload}
               disabled={downloading || !stats}
-              className="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md text-white bg-special-blue hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-special-blue disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <ArrowDownTrayIcon className="h-5 w-5 mr-2" />
               {downloading ? 'Generating PDF...' : 'Download PDF Report'}
             </button>
 
-            <button
+            {/* <button
               type="button"
               onClick={() => {
                 try {
@@ -217,7 +217,7 @@ const RuknPDFDownload = () => {
             >
               <EyeIcon className="h-5 w-5 mr-2" />
               View PDF
-            </button>
+            </button> */}
           </div>
         </div>
       </div>
