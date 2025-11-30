@@ -1,5 +1,5 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { ReportProvider } from './contexts/ReportContext';
 import Login from './components/auth/Login';
@@ -11,6 +11,7 @@ import QASection from './components/QASection';
 import PDFDownload from './components/PDFDownload';
 import Profile from './components/Profile';
 import Navbar from './components/Navbar';
+import HamiTemplate from './components/templates/HamiTemplate';
 
 // Protected Route Component
 const ProtectedRoute = ({ children }) => {
@@ -32,47 +33,51 @@ function App() {
   return (
     <AuthProvider>
       <ReportProvider>
-        <Router>
-          <div className="min-h-screen bg-gray-50">
-            <Navbar />
-            <div className="container mx-auto px-4 py-8">
-              <Routes>
-                <Route path="/login" element={<Login />} />
-                <Route path="/register" element={<Register />} />
-                <Route path="/" element={
-                  <ProtectedRoute>
-                    <Dashboard />
-                  </ProtectedRoute>
-                } />
-                <Route path="/daily" element={
-                  <ProtectedRoute>
-                    <DailyReport />
-                  </ProtectedRoute>
-                } />
-                <Route path="/monthly" element={
-                  <ProtectedRoute>
-                    <MonthlyReport />
-                  </ProtectedRoute>
-                } />
-                <Route path="/qa" element={
-                  <ProtectedRoute>
-                    <QASection />
-                  </ProtectedRoute>
-                } />
-                <Route path="/download" element={
-                  <ProtectedRoute>
-                    <PDFDownload />
-                  </ProtectedRoute>
-                } />
-                <Route path="/profile" element={
-                  <ProtectedRoute>
-                    <Profile />
-                  </ProtectedRoute>
-                } />
-              </Routes>
-            </div>
+        <div className="min-h-screen bg-gray-50">
+          <Navbar />
+          <div className="container mx-auto px-4 py-8">
+            <Routes>
+              <Route path="/login" element={<Login />} />
+              <Route path="/register" element={<Register />} />
+              
+              <Route path="/hami-template" element={
+                
+                  <HamiTemplate />
+               
+              } />
+              <Route path="/" element={
+                <ProtectedRoute>
+                  <Dashboard />
+                </ProtectedRoute>
+              } />
+              <Route path="/daily" element={
+                <ProtectedRoute>
+                  <DailyReport />
+                </ProtectedRoute>
+              } />
+              <Route path="/monthly" element={
+                <ProtectedRoute>
+                  <MonthlyReport />
+                </ProtectedRoute>
+              } />
+              <Route path="/qa" element={
+                <ProtectedRoute>
+                  <QASection />
+                </ProtectedRoute>
+              } />
+              <Route path="/download" element={
+                <ProtectedRoute>
+                  <PDFDownload />
+                </ProtectedRoute>
+              } />
+              <Route path="/profile" element={
+                <ProtectedRoute>
+                  <Profile />
+                </ProtectedRoute>
+              } />
+            </Routes>
           </div>
-        </Router>
+        </div>
       </ReportProvider>
     </AuthProvider>
   );
