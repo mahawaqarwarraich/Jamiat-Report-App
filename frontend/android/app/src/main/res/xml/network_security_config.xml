@@ -7,10 +7,10 @@
         <domain includeSubdomains="true">10.0.2.2</domain>
     </domain-config>
      <!-- Production domains (HTTPS only) -->
-    <domain-config cleartextTrafficPermitted="false">
+    <!-- <domain-config cleartextTrafficPermitted="false">
         <domain includeSubdomains="true">https://jamiat-report-app.vercel.app</domain>
-    </domain-config>
-    <base-config cleartextTrafficPermitted="false">
+    </domain-config> -->
+    <base-config cleartextTrafficPermitted="true">
         <trust-anchors>
             <certificates src="system" />
             <certificates src="user" />
