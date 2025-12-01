@@ -4,8 +4,10 @@
   "private": true,
   "dependencies": {
     "@capacitor/android": "^7.4.4",
+    "@capacitor/app": "^7.1.0",
     "@capacitor/cli": "^7.4.4",
     "@capacitor/core": "^7.4.4",
+    "@capacitor/preferences": "^7.0.2",
     "@heroicons/react": "^2.2.0",
     "@testing-library/dom": "^10.4.1",
     "@testing-library/jest-dom": "^6.6.4",
@@ -25,7 +27,9 @@
     "start": "react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test",
-    "eject": "react-scripts eject"
+    "eject": "react-scripts eject",
+    "sync:android": "npm run build && npx cap sync android",
+    "open:android": "npm run sync:android && npx cap open android"
   },
   "eslintConfig": {
     "extends": [
