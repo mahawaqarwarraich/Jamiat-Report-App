@@ -230,6 +230,10 @@ console.log('Response data length:', response.data.byteLength || response.data.l
           <p className="text-gray-600 mb-6">
             Download a comprehensive PDF report including all your daily activities, 
             monthly statistics, and Q&A responses for {getCurrentMonthName()}.
+            <br />
+            <span className="text-sm text-gray-500">
+              Once report data is available, the download button will become active; otherwise, it will remain disabled.
+            </span>
           </p>
 
           <div className="flex items-center justify-center gap-4">
