@@ -1,7 +1,0 @@
-<?xml version='1.0' encoding='utf-8'?>
-<resources>
-    <string name="app_name">JamiaReport</string>
-    <string name="title_activity_main">JamiaReport</string>
-    <string name="package_name">com.maha.jamireport</string>
-    <string name="custom_url_scheme">com.maha.jamireport</string>
-</resources>
